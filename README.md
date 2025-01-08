@@ -84,5 +84,4 @@
 | chenfeng-u-oss | Civi 4 pro | Android U | AU_LINUX_KERNEL.PLATFORM.3.0.R1.00.00.00.017.065 |[chenfeng-u-oss ](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/chenfeng-u-oss ) |
 | breeze-u-oss | Redmi Note 13R | Android U | LA.VENDOR.1.0.r1-24300-WAIPIO.QSSI14.0-1 |[breeze-u-oss ](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/breeze-u-oss ) |
 | goku-u-oss | Xiaomi MIX Fold 4 | Android U | AU_LINUX_ANDROID_LA.VENDOR.14.3.0.R1.00.00.00.000.093 |[goku-u-oss ](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/goku-u-oss-test ) |
-
-
+| muyu-v-oss | Xiaomi Pad 7 Pro | Android U | LA.VENDOR.14.3.0.r1-14500-r1.0.r1_00042.0 |[muyu-v-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/muyu-v-oss) |
