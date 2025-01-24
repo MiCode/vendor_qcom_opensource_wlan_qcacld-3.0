@@ -668,6 +668,22 @@ enum htt_dbg_ext_stats_type {
      */
     HTT_DBG_EXT_STATS_LATENCY_PROF_STATS_LO = 67,
 
+    /** HTT_DBG_GTX_STATS
+     * PARAMS:
+     *    - No Params
+     * RESP MSG:
+     *    - htt_pdev_gtx_stats_tlv
+     */
+    HTT_DBG_GTX_STATS = 68,
+
+    /** HTT_DBG_EXT_STATS_TX_VDEV_NSS
+     * PARAMS:
+     *   - No Params
+     * RESP MSG:
+     *    - htt_stats_tx_vdev_nss_tlv
+     */
+    HTT_DBG_EXT_STATS_TX_VDEV_NSS = 69,
+
 
     /* keep this last */
     HTT_DBG_NUM_EXT_STATS = 256,
@@ -3369,6 +3385,19 @@ typedef struct {
 typedef htt_stats_txbf_ofdma_be_steer_mpdu_stats_tlv
     htt_txbf_ofdma_be_steer_mpdu_stats_tlv;
 
+/* HTT_STATS_TXBF_OFDMA_BE_PARBW_TAG stats TLV:
+ * Sent by target in response to HTT_DBG_EXT_STATS_TXBF_OFDMA stats ID request.
+ */
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    /* Num of EHT TxBF Partial Bandwidth soundings */
+    A_UINT32 be_ofdma_parbw_user_snd;
+    /* Num of EHT Partial Bandwidth Sounded CVs received */
+    A_UINT32 be_ofdma_parbw_cv;
+    /* Num of 11BE EHT Total CVs received */
+    A_UINT32 be_ofdma_total_cv;
+} htt_stats_txbf_ofdma_be_parbw_tlv;
+
 /* STATS_TYPE : HTT_DBG_EXT_STATS_TXBF_OFDMA
  * TLV_TAGS:
  *      - HTT_STATS_TXBF_OFDMA_NDPA_STATS_TAG
@@ -4390,6 +4419,9 @@ typedef struct {
     A_UINT32 sched_udp_notify2;
     A_UINT32 sched_nonudp_notify1;
     A_UINT32 sched_nonudp_notify2;
+    A_UINT32 tqm_enqueue_msdu_count;
+    A_UINT32 tqm_dropped_msdu_count;
+    A_UINT32 tqm_dequeue_msdu_count;
 } htt_stats_tx_tqm_pdev_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_tqm_pdev_tlv htt_tx_tqm_pdev_stats_tlv_v;
@@ -4580,6 +4612,18 @@ typedef struct {
     A_UINT32 eapol_start_packets;
     A_UINT32 eapol_logoff_packets;
     A_UINT32 eapol_encap_asf_packets;
+    A_UINT32 m1_success;
+    A_UINT32 m1_compl_fail;
+    A_UINT32 m2_success;
+    A_UINT32 m2_compl_fail;
+    A_UINT32 m3_success;
+    A_UINT32 m3_compl_fail;
+    A_UINT32 m4_success;
+    A_UINT32 m4_compl_fail;
+    A_UINT32 g1_success;
+    A_UINT32 g1_compl_fail;
+    A_UINT32 g2_success;
+    A_UINT32 g2_compl_fail;
 } htt_stats_tx_de_eapol_packets_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_de_eapol_packets_tlv htt_tx_de_eapol_packets_stats_tlv;
@@ -4605,6 +4649,7 @@ typedef struct {
     A_UINT32 incomplete_llc;
     A_UINT32 eapol_duplicate_m3;
     A_UINT32 eapol_duplicate_m4;
+    A_UINT32 eapol_invalid_mac;
 } htt_stats_tx_de_classify_failed_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_de_classify_failed_tlv htt_tx_de_classify_failed_stats_tlv;
@@ -5369,6 +5414,7 @@ typedef struct {
 #define HTT_TX_PDEV_STATS_NUM_LTF 4
 #define HTT_TX_PDEV_STATS_NUM_11AX_TRIGGER_TYPES 6
 #define HTT_TX_PDEV_STATS_NUM_11BE_TRIGGER_TYPES 6
+#define HTT_TX_VDEV_STATS_NUM_SPATIAL_STREAMS 4
 #define HTT_TX_NUM_OF_SOUNDING_STATS_WORDS \
     (HTT_TX_PDEV_STATS_NUM_BW_COUNTERS * \
      HTT_TX_PDEV_STATS_NUM_AX_MUMIMO_USER_STATS)
@@ -5392,6 +5438,8 @@ typedef struct {
      HTT_TX_PDEV_STATS_NUM_EXTRA2_MCS_COUNTERS)
 
 #define HTT_TX_PDEV_STATS_NUM_PER_COUNTERS 101
+#define HTT_MAX_POWER_LEVEL 32 /* 0 to 32 dBm */
+#define HTT_MAX_NEGATIVE_POWER_LEVEL 10 /* 0 to -10 dBm */
 
 /*
  * Introduce new TX counters to support 320MHz support and punctured modes
@@ -5580,9 +5628,25 @@ typedef struct {
     A_UINT32 extra_eht_ltf;
     /** Counter for Extra EHT LTFs in OFDMA sequences */
     A_UINT32 extra_eht_ltf_ofdma;
+    /** 11AX HE UL_BA RU Size stats */
+    A_UINT32 ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_AX_RU_SIZE_COUNTERS];
 } htt_stats_tx_pdev_rate_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_rate_stats_tlv htt_tx_pdev_rate_stats_tlv;
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    A_UINT32 vdev_id; /* which vdev produced these per-Nss tx stats */
+    /* tx_nss:
+     * Count how many MPDUs the vdev has sent using each possible number
+     * of spatial streams:
+     * tx_nss[0] -> number of MPDUs transmitted using Nss=1
+     * tx_nss[1] -> number of MPDUs transmitted using Nss=2
+     * tx_nss[2] -> number of MPDUs transmitted using Nss=3
+     * tx_nss[3] -> number of MPDUs transmitted using Nss=4
+     */
+    A_UINT32 tx_nss[HTT_TX_VDEV_STATS_NUM_SPATIAL_STREAMS];
+} htt_stats_tx_vdev_nss_tlv;
 
 typedef struct {
      /* 11be mode pdev rate stats; placed in a separate TLV to adhere to size restrictions */
@@ -5668,6 +5732,7 @@ typedef struct {
     A_UINT32 be_ofdma_tx_ru_size[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
     /** 11BE EHT DL MU OFDMA EHT-SIG MCS stats */
     A_UINT32 be_ofdma_eht_sig_mcs[HTT_TX_PDEV_STATS_NUM_EHT_SIG_MCS_COUNTERS];
+    A_UINT32 be_ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_BE_RU_SIZE_COUNTERS];
 } htt_stats_tx_pdev_rate_stats_be_ofdma_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_tx_pdev_rate_stats_be_ofdma_tlv
@@ -5968,6 +6033,25 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_rx_pdev_ppdu_dur_tlv htt_rx_pdev_ppdu_dur_stats_tlv;
 
+#define HTT_STATS_RX_RSSI_HIST_BINS 24
+#define HTT_STATS_RX_RSSI_HIST_OFFSET_DBM -30
+#define HTT_STATS_RX_RSSI_DB_PER_BIN -3
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+
+    /** rssi_in_dbm_ppdu_cnt :
+     * Number of PPDUs received within each RSSI range
+     * rssi_in_dbm_ppdu_cnt[0]  : number of PPDUs received > -30 dBm
+     * rssi_in_dbm_ppdu_cnt[1]  : number of PPDUs received from [-30 to -32] dBm
+     * rssi_in_dbm_ppdu_cnt[2]  : number of PPDUs received from [-33 to -35] dBm
+     * ...
+     * rssi_in_dbm_ppdu_cnt[22] : number of PPDUs received from [-93 to -95] dBm
+     * rssi_in_dbm_ppdu_cnt[23] : number of PPDUs received <= -96 dBm
+     **/
+    A_UINT32 rssi_in_dbm_ppdu_cnt[HTT_STATS_RX_RSSI_HIST_BINS];
+} htt_stats_rx_pdev_rssi_hist_tlv;
+
 /* STATS_TYPE : HTT_DBG_EXT_STATS_PDEV_RX_RATE
  * TLV_TAGS:
  *      - HTT_STATS_RX_PDEV_RATE_STATS_TAG
@@ -5980,6 +6064,7 @@ typedef htt_stats_rx_pdev_ppdu_dur_tlv htt_rx_pdev_ppdu_dur_stats_tlv;
 typedef struct {
     htt_stats_rx_pdev_rate_stats_tlv rate_tlv;
     htt_stats_rx_pdev_ppdu_dur_tlv rx_ppdu_dur_tlv;
+    htt_stats_rx_pdev_rssi_hist_tlv rx_ppdu_rssi_hist_tlv;
 } htt_rx_pdev_rate_stats_t;
 #endif /* ATH_TARGET */
 
@@ -7574,6 +7659,14 @@ typedef struct {
      * bin2 contains the number of sampling windows that had > 4 interrupts
      */
     A_UINT32 interrupts_hist[HTT_INTERRUPTS_LATENCY_PROFILE_MAX_HIST];
+    /* min time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 min_pcycles_time;
+    /* max time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 max_pcycles_time;
+    /* total time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 tot_pcycles_time;
+    /* avg time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 avg_pcycles_time;
 } htt_stats_latency_prof_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_latency_prof_stats_tlv htt_latency_prof_stats_tlv;
@@ -8590,6 +8683,82 @@ typedef struct {
 } htt_pdev_rtt_init_stats_t;
 #endif /* ATH_TARGET */
 
+enum {
+    HTT_STATS_WIFI_RADAR_CAL_TYPE_NONE = 0,
+    HTT_STATS_WIFI_RADAR_CAL_TYPE_GAIN_BINARY_SEARCH = 1,
+    HTT_STATS_WIFI_RADAR_CAL_TYPE_TX_GAIN_BINARY_SEARCH = 2,
+    HTT_STATS_WIFI_RADAR_CAL_TYPE_RECAL_GAIN_VALIDATION = 3,
+    HTT_STATS_WIFI_RADAR_CAL_TYPE_RECAL_GAIN_BINARY_SEARCH = 4,
+    /* the value 5 is reserved for future use */
+
+    HTT_STATS_NUM_WIFI_RADAR_CAL_TYPES = 6
+};
+
+enum {
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_NONE = 0,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_DPD_ABORT = 1,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_CONVERGENCE = 2,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_TX_EXCEEDS_RETRY = 3,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_CAPTURE = 4,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_NEW_CHANNEL_CHANGE = 5,
+    HTT_STATS_WIFI_RADAR_CAL_FAILURE_NEW_CAL_REQ = 6,
+    /* the values 7-9 are reserved for future use */
+
+    HTT_STATS_NUM_WIFI_RADAR_CAL_FAILURE_REASONS = 10
+};
+
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    A_UINT32 capture_in_progress;
+    A_UINT32 calibration_in_progress;
+    /* Capture time interval, in ms */
+    A_UINT32 periodicity;
+    /* Last user request timestamp, in ms */
+    A_UINT32 latest_req_timestamp;
+    /* Last target res timestamp, in ms */
+    A_UINT32 latest_resp_timestamp;
+    /* Time taken by last calibration to end, in ms */
+    A_UINT32 latest_calibration_timing;
+    /* Time taken by last calibration to end, in ms for each chain */
+    A_UINT32 calibration_timing_per_chain[HTT_STATS_MAX_CHAINS];
+    /* To log user request count */
+    A_UINT32 wifi_radar_req_count;
+    /* Total packet success count */
+    A_UINT32 num_wifi_radar_pkt_success;
+    /* Total packet queued count */
+    A_UINT32 num_wifi_radar_pkt_queued;
+    /* Total packet success count during latest calibration alone */
+    A_UINT32 num_wifi_radar_cal_pkt_success;
+    /* Tx Gain Calibration Output - Initial Tx Gain index*/
+    A_UINT32 wifi_radar_cal_init_tx_gain;
+    /* Last Calibration Type, refer to HTT_STATS_WIFI_RADAR_CAL_TYPE_ consts */
+    A_UINT32 latest_wifi_radar_cal_type;
+    /* Calibration Type counters */
+    A_UINT32 wifi_radar_cal_type_counts[HTT_STATS_NUM_WIFI_RADAR_CAL_TYPES];
+    /*
+     * Last Calibration Fail Reason,
+     * refer to HTT_STATS_WIFI_RADAR_CAL_FAILURE_ consts
+     */
+    A_UINT32 latest_wifi_radar_cal_fail_reason;
+    /* Calibration Fail Reason counters */
+    A_UINT32 wifi_radar_cal_fail_reason_counts[HTT_STATS_NUM_WIFI_RADAR_CAL_FAILURE_REASONS];
+    /* WiFi Radar Licensed for SKU: 0 - No; 1 - Yes */
+    A_UINT32 wifi_radar_licensed;
+    /*
+     * cmd result to show failure count of CTS2SELF across MAX_CMD_RESULT
+     * reasons
+     */
+    A_UINT32 cmd_results_cts2self[HTT_STATS_MAX_SCH_CMD_RESULT];
+    /*
+     * cmd result to show failure count of wifi radar across MAX_CMD_RESULT
+     * reasons
+     */
+    A_UINT32 cmd_results_wifi_radar[HTT_STATS_MAX_SCH_CMD_RESULT];
+    /* Tx gain index from gain table obtained/used for calibration */
+    A_UINT32 wifi_radar_tx_gains[HTT_STATS_MAX_CHAINS];
+    /* Rx gain index from gain table obtained/used from calibration */
+    A_UINT32 wifi_radar_rx_gains[HTT_STATS_MAX_CHAINS][HTT_STATS_MAX_CHAINS];
+} htt_stats_tx_pdev_wifi_radar_tlv;
 
 /* STATS_TYPE : HTT_DBG_EXT_PKTLOG_AND_HTT_RING_STATS
  * TLV_TAGS:
@@ -8973,6 +9142,19 @@ typedef struct {
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_counters_tlv htt_phy_counters_tlv;
 
+#define HTT_STATS_ANI_MODE_M 0x000000ff
+#define HTT_STATS_ANI_MODE_S 0
+
+#define HTT_STATS_ANI_MODE_GET(_var) \
+    (((_var) & HTT_STATS_ANI_MODE_M) >> \
+     HTT_STATS_ANI_MODE_S)
+
+#define HTT_STATS_ANI_MODE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_ANI_MODE, _val); \
+        ((_var) |= ((_val) << HTT_STATS_ANI_MODE_S)); \
+    } while (0)
+
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
     /** per chain hw noise floor values in dBm */
@@ -9026,9 +9208,220 @@ typedef struct {
     A_UINT32 band_center_frequency_DBW;
 
     /** DFS SW based progressive stats - end **/
+
+    /* BIT [ 7 :  0]   :- ani_mode
+     * BIT [31 :  8]   :- reserved
+     *
+     * ani_mode:
+     *     1 for static ANI
+     *     0 for dynamic ANI
+     *     0xFF for ANI disabled
+     */
+    union {
+        A_UINT32 dword__ani_mode;
+        struct {
+            A_UINT32
+                ani_mode: 8,
+                reserved: 24;
+        };
+    };
 } htt_stats_phy_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_stats_tlv htt_phy_stats_tlv;
+
+
+#define HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_M 0x00000001
+#define HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_S 0
+#define HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_M) >> \
+     HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_S)
+#define HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_CAL_DATA_COMPRESSED, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_CAL_DATA_COMPRESSED_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_M 0x00000006
+#define HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_S 1
+#define HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_M) >> \
+     HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_S)
+#define HTT_STATS_PHY_RESET_CAL_DATA_SOURCE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_CAL_DATA_SOURCE, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_CAL_DATA_SOURCE_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_XTALCAL_M 0x00000008
+#define HTT_STATS_PHY_RESET_XTALCAL_S 3
+#define HTT_STATS_PHY_RESET_XTALCAL_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_XTALCAL_M) >> \
+     HTT_STATS_PHY_RESET_XTALCAL_S)
+#define HTT_STATS_PHY_RESET_XTALCAL_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_XTALCAL, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_XTALCAL_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL2GOPC_M 0x00000010
+#define HTT_STATS_PHY_RESET_TPCCAL2GOPC_S 4
+#define HTT_STATS_PHY_RESET_TPCCAL2GOPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL2GOPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL2GOPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL2GOPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL2GOPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL2GOPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL2GFPC_M 0x00000020
+#define HTT_STATS_PHY_RESET_TPCCAL2GFPC_S 5
+#define HTT_STATS_PHY_RESET_TPCCAL2GFPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL2GFPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL2GFPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL2GFPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL2GFPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL2GFPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL5GOPC_M 0x00000040
+#define HTT_STATS_PHY_RESET_TPCCAL5GOPC_S 6
+#define HTT_STATS_PHY_RESET_TPCCAL5GOPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL5GOPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL5GOPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL5GOPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL5GOPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL5GOPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL5GFPC_M 0x00000080
+#define HTT_STATS_PHY_RESET_TPCCAL5GFPC_S 7
+#define HTT_STATS_PHY_RESET_TPCCAL5GFPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL5GFPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL5GFPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL5GFPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL5GFPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL5GFPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL6GOPC_M 0x00000100
+#define HTT_STATS_PHY_RESET_TPCCAL6GOPC_S 8
+#define HTT_STATS_PHY_RESET_TPCCAL6GOPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL6GOPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL6GOPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL6GOPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL6GOPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL6GOPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_TPCCAL6GFPC_M 0x00000200
+#define HTT_STATS_PHY_RESET_TPCCAL6GFPC_S 9
+#define HTT_STATS_PHY_RESET_TPCCAL6GFPC_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_TPCCAL6GFPC_M) >> \
+     HTT_STATS_PHY_RESET_TPCCAL6GFPC_S)
+#define HTT_STATS_PHY_RESET_TPCCAL6GFPC_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_TPCCAL6GFPC, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_TPCCAL6GFPC_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_RXGAINCAL2G_M 0x00000400
+#define HTT_STATS_PHY_RESET_RXGAINCAL2G_S 10
+#define HTT_STATS_PHY_RESET_RXGAINCAL2G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_RXGAINCAL2G_M) >> \
+     HTT_STATS_PHY_RESET_RXGAINCAL2G_S)
+#define HTT_STATS_PHY_RESET_RXGAINCAL2G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_RXGAINCAL2G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_RXGAINCAL2G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_RXGAINCAL5G_M 0x00000800
+#define HTT_STATS_PHY_RESET_RXGAINCAL5G_S 11
+#define HTT_STATS_PHY_RESET_RXGAINCAL5G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_RXGAINCAL5G_M) >> \
+     HTT_STATS_PHY_RESET_RXGAINCAL5G_S)
+#define HTT_STATS_PHY_RESET_RXGAINCAL5G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_RXGAINCAL5G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_RXGAINCAL5G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_RXGAINCAL6G_M 0x00001000
+#define HTT_STATS_PHY_RESET_RXGAINCAL6G_S 12
+#define HTT_STATS_PHY_RESET_RXGAINCAL6G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_RXGAINCAL6G_M) >> \
+     HTT_STATS_PHY_RESET_RXGAINCAL6G_S)
+#define HTT_STATS_PHY_RESET_RXGAINCAL6G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_RXGAINCAL6G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_RXGAINCAL6G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_AOACAL2G_M 0x00002000
+#define HTT_STATS_PHY_RESET_AOACAL2G_S 13
+#define HTT_STATS_PHY_RESET_AOACAL2G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_AOACAL2G_M) >> \
+     HTT_STATS_PHY_RESET_AOACAL2G_S)
+#define HTT_STATS_PHY_RESET_AOACAL2G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_AOACAL2G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_AOACAL2G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_AOACAL5G_M 0x00004000
+#define HTT_STATS_PHY_RESET_AOACAL5G_S 14
+#define HTT_STATS_PHY_RESET_AOACAL5G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_AOACAL5G_M) >> \
+     HTT_STATS_PHY_RESET_AOACAL5G_S)
+#define HTT_STATS_PHY_RESET_AOACAL5G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_AOACAL5G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_AOACAL5G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_AOACAL6G_M 0x00008000
+#define HTT_STATS_PHY_RESET_AOACAL6G_S 15
+#define HTT_STATS_PHY_RESET_AOACAL6G_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_AOACAL6G_M) >> \
+     HTT_STATS_PHY_RESET_AOACAL6G_S)
+#define HTT_STATS_PHY_RESET_AOACAL6G_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_AOACAL6G, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_AOACAL6G_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_XTAL_FROM_OTP_M 0x00010000
+#define HTT_STATS_PHY_RESET_XTAL_FROM_OTP_S 16
+#define HTT_STATS_PHY_RESET_XTAL_FROM_OTP_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_XTAL_FROM_OTP_M) >> \
+     HTT_STATS_PHY_RESET_XTAL_FROM_OTP_S)
+#define HTT_STATS_PHY_RESET_XTAL_FROM_OTP_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_XTAL_FROM_OTP, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_XTAL_FROM_OTP_S)); \
+    } while (0)
+
+#define HTT_STATS_PHY_RESET_GLUT_LINEARITY_M 0x000000FF
+#define HTT_STATS_PHY_RESET_GLUT_LINEARITY_S 0
+#define HTT_STATS_PHY_RESET_GLUT_LINEARITY_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_GLUT_LINEARITY_M) >> \
+     HTT_STATS_PHY_RESET_GLUT_LINEARITY_S)
+#define HTT_STATS_PHY_RESET_GLUT_LINEARITY_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_GLUT_LINEARITY, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_GLUT_LINEARITY_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_PLUT_LINEARITY_M 0x0000FF00
+#define HTT_STATS_PHY_RESET_PLUT_LINEARITY_S 8
+#define HTT_STATS_PHY_RESET_PLUT_LINEARITY_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_PLUT_LINEARITY_M) >> \
+     HTT_STATS_PHY_RESET_PLUT_LINEARITY_S)
+#define HTT_STATS_PHY_RESET_PLUT_LINEARITY_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_PLUT_LINEARITY, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_PLUT_LINEARITY_S)); \
+    } while (0)
+#define HTT_STATS_PHY_RESET_WLANDRIVERMODE_M 0x00FF0000
+#define HTT_STATS_PHY_RESET_WLANDRIVERMODE_S 16
+#define HTT_STATS_PHY_RESET_WLANDRIVERMODE_GET(_var) \
+    (((_var) & HTT_STATS_PHY_RESET_WLANDRIVERMODE_M) >> \
+     HTT_STATS_PHY_RESET_WLANDRIVERMODE_S)
+#define HTT_STATS_PHY_RESET_WLANDRIVERMODE_SET(_var, _val) \
+    do { \
+        HTT_CHECK_SET_VAL(HTT_STATS_PHY_RESET_WLANDRIVERMODE, _val); \
+        ((_var) |= ((_val) << STATS_PHY_RESET_WLANDRIVERMODE_S)); \
+    } while (0)
+
 
 typedef struct {
     htt_tlv_hdr_t tlv_hdr;
@@ -9148,6 +9541,44 @@ typedef struct {
      * when explicitly requested by the host.
      */
     A_UINT32 nfcal_iteration_counts[3];
+
+    /** Below union indicates the merge status for different cal */
+    union {
+        A_UINT32 calmerge_stats;
+        struct {
+            A_UINT32 CalData_Compressed:1,
+                     CalDataSource:2,
+                     xtalcal:1,
+                     tpccal2GFPC:1,
+                     tpccal2GOPC:1,
+                     tpccal5GFPC:1,
+                     tpccal5GOPC:1,
+                     tpccal6GFPC:1,
+                     tpccal6GOPC:1,
+                     rxgaincal2G:1,
+                     rxgaincal5G:1,
+                     rxgaincal6G:1,
+                     aoacal2G:1,
+                     aoacal5G:1,
+                     aoacal6G:1,
+                     XTAL_from_OTP:1,
+                     rsvd1:15;
+        };
+    };
+    /** Below union lets us know of any non-linearity in plut/glut
+     * and the mode we are in
+     */
+    union {
+        A_UINT32 misc_stats;
+        struct {
+            A_UINT32 GLUT_linearity:8,
+                     PLUT_linearity:8,
+                     WlanDriverMode:8,
+                     rsvd2:8;
+        };
+    };
+    /** BoardId fetched from OTP */
+    A_UINT32 BoardIDfromOTP;
 } htt_stats_phy_reset_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_reset_stats_tlv htt_phy_reset_stats_tlv;
@@ -9312,6 +9743,29 @@ typedef struct {
      * units = 0.25dBm
      */
     A_INT32 max_reg_only_allowed_power[HTT_STATS_MAX_CHAINS];
+
+    /** number of PPDUs transmitted for each number of tx chains */
+    A_UINT32 tx_num_chains[HTT_STATS_MAX_CHAINS];
+
+    /** tx_power:
+     * Number of PPDUs transmitted with each power level >= 0 dBm.
+     * tx_power[0]: number of PPDUs with tx power in the [0 dBm, 1 dBm) range
+     * tx_power[1]: number of PPDUs with tx power in the [1 dBm, 2 dBm) range
+     * ...
+     * tx_power[30]: number of PPDUs with tx power in the [30 dBm, 31 dBm) range
+     * tx_power[31]: number of PPDUs with tx power >= 31 dBm
+     */
+    A_UINT32 tx_power[HTT_MAX_POWER_LEVEL];
+
+    /** tx_power_neg:
+     * Number of PPDUs transmitted with each power level < 0 dBm.
+     * tx_power_neg[0]: cnt of PPDUs with tx pwr in the [-1 dBm, 0 dBm) range
+     * tx_power_neg[1]: cnt of PPDUs with tx pwr in the [-2 dBm, -1 dBm) range
+     * ...
+     * tx_power_neg[8]: cnt of PPDUs with tx pwr in the [-9 dBm, -8 dBm) range
+     * tx_power_neg[9]: cnt of PPDUs with tx pwr < -9 dBm
+     */
+    A_UINT32 tx_power_neg[HTT_MAX_NEGATIVE_POWER_LEVEL];
 } htt_stats_phy_tpc_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_phy_tpc_stats_tlv htt_phy_tpc_stats_tlv;
@@ -10464,6 +10918,7 @@ typedef struct _htt_odd_mandatory_muofdma_pdev_stats_tlv {
     A_UINT32 ax_mu_brp_sch_status[HTT_TX_PDEV_STATS_NUM_TX_ERR_STATUS];
     A_UINT32 be_mu_brp_sch_status[HTT_TX_PDEV_STATS_NUM_TX_ERR_STATUS];
     A_UINT32 ofdma_tx_ru_size[HTT_TX_PDEV_STATS_NUM_AX_RU_SIZE_COUNTERS];
+    A_UINT32 ofdma_ba_ru_size[HTT_TX_PDEV_STATS_NUM_AX_RU_SIZE_COUNTERS];
 } htt_dbg_odd_mandatory_muofdma_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_dbg_odd_mandatory_muofdma_tlv
@@ -11704,5 +12159,15 @@ static INLINE A_UINT8 *htt_ctrl_path_cal_type_id_to_name(A_UINT32 cal_type_id)
 }
 #endif /* HTT_CTRL_PATH_STATS_CAL_TYPE_STRINGS */
 
+/*===================== Start GTX stats ====================*/
+#define HTT_NUM_MCS_PER_NSS 16
+typedef struct {
+    htt_tlv_hdr_t tlv_hdr;
+    A_UINT32 gtx_enabled; /* shows whether Green Tx feature is enabled */
+    A_INT32 mcs_tpc_min[HTT_NUM_MCS_PER_NSS]; /* shows current MCS's minimum TPC in 0.25dBm units */
+    A_INT32 mcs_tpc_max[HTT_NUM_MCS_PER_NSS]; /* shows current MCS's maximum TPC in 0.25dBm units */
+    A_UINT32 mcs_tpc_diff[HTT_NUM_MCS_PER_NSS]; /* shows current MCS's difference between maximum and minimum TPC in 0.25dB unit*/
+} htt_stats_gtx_tlv;
+/*===================== End GTX stats ====================*/
 
 #endif /* __HTT_STATS_H__ */
