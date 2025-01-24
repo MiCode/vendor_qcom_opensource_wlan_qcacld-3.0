@@ -87,3 +87,4 @@
 | muyu-v-oss | Xiaomi Pad 7 Pro | Android U | LA.VENDOR.14.3.0.r1-14500-r1.0.r1_00042.0 |[muyu-v-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/muyu-v-oss) |
 | uke-v-oss | Xiaomi Pad 7 | Android V | LA.VENDOR.14.3.0.r1-14500-r1.0.r1_00042.0 |[uke-v-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/uke-v-oss) |
 | bsp-zorn-v-oss | REDMI K80  | Android V | qcom-LA.VENDOR.14.3.0.r1-14500-r1.0.r1_00042.0 |[bsp-zorn-v-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/bsp-zorn-v-oss) |
+| bsp-miro-v-oss | REDMI K80 PRO | Android V | qcom-LA.VENDOR.14.3.0.r1-14500-r1.0.r1_00042.0 |[bsp-miro-v-oss](https://github.com/MiCode/vendor_qcom_opensource_wlan/tree/bsp-miro-v-oss) |
